@@ -65,12 +65,6 @@ public class BenchmarkDictionaryBlock
     }
 
     @Benchmark
-    public long getPositionsSizeInBytes(BenchmarkData data)
-    {
-        return data.getAllPositionsDictionaryBlock().getPositionsSizeInBytes(data.getSelectedPositionsMask(), data.getSelectedPositionCount());
-    }
-
-    @Benchmark
     public long getPositionsThenGetSizeInBytes(BenchmarkData data)
     {
         int[] positionIds = data.getPositionsIds();
@@ -255,14 +249,6 @@ public class BenchmarkDictionaryBlock
     }
 
     @Test
-    public void testGetPositionsSizeInBytes()
-    {
-        BenchmarkData data = new BenchmarkData();
-        data.setup();
-        getPositionsSizeInBytes(data);
-    }
-
-    @Test
     public void testGetPositionsThenGetSizeInBytes()
     {
         BenchmarkData data = new BenchmarkData();
@@ -286,7 +272,7 @@ public class BenchmarkDictionaryBlock
         copyPositionsCompactDictionary(data);
     }
 
-    public static void main(String[] args)
+    static void main()
             throws Exception
     {
         // assure the benchmarks are valid before running

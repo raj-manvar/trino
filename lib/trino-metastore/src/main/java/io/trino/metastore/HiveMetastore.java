@@ -13,11 +13,11 @@
  */
 package io.trino.metastore;
 
-import com.google.common.collect.ImmutableSet;
 import io.trino.metastore.HivePrivilegeInfo.HivePrivilege;
 import io.trino.spi.TrinoException;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.function.LanguageFunction;
+import io.trino.spi.metrics.Metrics;
 import io.trino.spi.predicate.TupleDomain;
 import io.trino.spi.security.RoleGrant;
 
@@ -71,7 +71,7 @@ public interface HiveMetastore
     /**
      * @param parameterValues is using ImmutableSet to mark that this api does not support filtering by null parameter value.
      */
-    List<String> getTableNamesWithParameters(String databaseName, String parameterKey, ImmutableSet<String> parameterValues);
+    List<String> getTableNamesWithParameters(String databaseName, String parameterKey, Set<String> parameterValues);
 
     void createDatabase(Database database);
 
@@ -237,4 +237,9 @@ public interface HiveMetastore
     void replaceFunction(String databaseName, String functionName, LanguageFunction function);
 
     void dropFunction(String databaseName, String functionName, String signatureToken);
+
+    default Metrics getMetrics()
+    {
+        return Metrics.EMPTY;
+    }
 }

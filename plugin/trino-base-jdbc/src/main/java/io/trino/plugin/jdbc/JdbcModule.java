@@ -14,13 +14,14 @@
 package io.trino.plugin.jdbc;
 
 import com.google.inject.Binder;
+import com.google.inject.Inject;
 import com.google.inject.Key;
 import com.google.inject.Provider;
-import com.google.inject.Provides;
 import com.google.inject.Scopes;
-import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
 import io.airlift.configuration.AbstractConfigurationAwareModule;
+import io.trino.plugin.base.cache.identity.IdentityCacheMapping;
+import io.trino.plugin.base.cache.identity.SingletonIdentityCacheMapping;
 import io.trino.plugin.base.mapping.IdentifierMappingModule;
 import io.trino.plugin.base.session.SessionPropertiesProvider;
 import io.trino.plugin.jdbc.logging.RemoteQueryModifierModule;
@@ -38,11 +39,12 @@ import java.util.concurrent.ExecutorService;
 
 import static com.google.inject.multibindings.Multibinder.newSetBinder;
 import static com.google.inject.multibindings.OptionalBinder.newOptionalBinder;
+import static io.airlift.bootstrap.ClosingBinder.closingBinder;
 import static io.airlift.concurrent.Threads.daemonThreadsNamed;
 import static io.airlift.configuration.ConditionalModule.conditionalModule;
 import static io.airlift.configuration.ConfigBinder.configBinder;
-import static io.trino.plugin.base.ClosingBinder.closingBinder;
 import static java.lang.String.format;
+import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.weakref.jmx.guice.ExportBinder.newExporter;
 
@@ -109,6 +111,10 @@ public class JdbcModule
 
         newSetBinder(binder, JdbcQueryEventListener.class);
 
+        newOptionalBinder(binder, Key.get(ExecutorService.class, ForJdbcClient.class))
+                .setDefault()
+                .toProvider(JdbcClientExecutorServiceProvider.class);
+
         closingBinder(binder)
                 .registerExecutor(Key.get(ExecutorService.class, ForJdbcClient.class));
     }
@@ -143,11 +149,21 @@ public class JdbcModule
         tablePropertiesProviderBinder(binder).addBinding().to(type).in(Scopes.SINGLETON);
     }
 
-    @Provides
-    @Singleton
-    @ForJdbcClient
-    public ExecutorService provideJdbcClientExecutor(CatalogName catalogName)
+    public static class JdbcClientExecutorServiceProvider
+            implements Provider<ExecutorService>
     {
-        return newCachedThreadPool(daemonThreadsNamed(format("%s-jdbc-client-%%d", catalogName)));
+        private final CatalogName catalogName;
+
+        @Inject
+        public JdbcClientExecutorServiceProvider(CatalogName catalogName)
+        {
+            this.catalogName = requireNonNull(catalogName, "catalogName is null");
+        }
+
+        @Override
+        public ExecutorService get()
+        {
+            return newCachedThreadPool(daemonThreadsNamed(format("%s-jdbc-client-%%d", catalogName)));
+        }
     }
 }

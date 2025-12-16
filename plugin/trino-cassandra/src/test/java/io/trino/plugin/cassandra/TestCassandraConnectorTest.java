@@ -94,6 +94,8 @@ public class TestCassandraConnectorTest
                  SUPPORTS_CREATE_TABLE_WITH_COLUMN_COMMENT,
                  SUPPORTS_CREATE_TABLE_WITH_TABLE_COMMENT,
                  SUPPORTS_CREATE_VIEW,
+                 SUPPORTS_DEFAULT_COLUMN_VALUE,
+                 SUPPORTS_LIMIT_PUSHDOWN,
                  SUPPORTS_MAP_TYPE,
                  SUPPORTS_MERGE,
                  SUPPORTS_NOT_NULL_CONSTRAINT,
@@ -1825,7 +1827,7 @@ public class TestCassandraConnectorTest
     @Override
     protected void verifyColumnNameLengthFailurePermissible(Throwable e)
     {
-        assertThat(e).hasMessageContaining("Attempted serializing to buffer exceeded maximum of 65535 bytes:");
+        assertThat(e).hasMessageContaining("Column name is too long. The maximum supported length is");
     }
 
     @Override
@@ -1856,13 +1858,6 @@ public class TestCassandraConnectorTest
                         "FROM nation c JOIN tpch.tiny.region t ON c.regionkey = t.regionkey " +
                         "WHERE c.nationkey = 3",
                 "VALUES ('CANADA', 'AMERICA')");
-    }
-
-    @Test
-    public void testProtocolVersion()
-    {
-        assertQuery("SELECT native_protocol_version FROM system.local",
-                "VALUES 4");
     }
 
     private void assertSelect(String tableName)

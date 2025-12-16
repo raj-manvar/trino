@@ -24,11 +24,11 @@ import io.trino.plugin.base.TypeDeserializer;
 import io.trino.plugin.hive.HiveColumnHandle.ColumnType;
 import io.trino.spi.HostAddress;
 import io.trino.spi.SplitWeight;
-import io.trino.spi.type.TestingTypeManager;
 import io.trino.spi.type.Type;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
@@ -37,6 +37,7 @@ import static io.trino.metastore.HiveType.HIVE_LONG;
 import static io.trino.plugin.hive.HiveColumnHandle.createBaseColumn;
 import static io.trino.plugin.hive.util.HiveBucketing.BucketingVersion.BUCKETING_V1;
 import static io.trino.spi.type.BigintType.BIGINT;
+import static io.trino.type.InternalTypeManager.TESTING_TYPE_MANAGER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TestHiveSplit
@@ -45,7 +46,7 @@ public class TestHiveSplit
     public void testJsonRoundTrip()
     {
         ObjectMapperProvider objectMapperProvider = new ObjectMapperProvider();
-        objectMapperProvider.setJsonDeserializers(ImmutableMap.of(Type.class, new TypeDeserializer(new TestingTypeManager())));
+        objectMapperProvider.setJsonDeserializers(ImmutableMap.of(Type.class, new TypeDeserializer(TESTING_TYPE_MANAGER)));
         JsonCodec<HiveSplit> codec = new JsonCodecFactory(objectMapperProvider).jsonCodec(HiveSplit.class);
 
         Map<String, String> schema = ImmutableMap.<String, String>builder()
@@ -53,8 +54,8 @@ public class TestHiveSplit
                 .put("bar", "baz")
                 .buildOrThrow();
 
-        ImmutableList<HivePartitionKey> partitionKeys = ImmutableList.of(new HivePartitionKey("a", "apple"), new HivePartitionKey("b", "42"));
-        ImmutableList<HostAddress> addresses = ImmutableList.of(HostAddress.fromParts("127.0.0.1", 44), HostAddress.fromParts("127.0.0.1", 45));
+        List<HivePartitionKey> partitionKeys = ImmutableList.of(new HivePartitionKey("a", "apple"), new HivePartitionKey("b", "42"));
+        List<HostAddress> addresses = ImmutableList.of(HostAddress.fromParts("127.0.0.1", 44), HostAddress.fromParts("127.0.0.1", 45));
 
         AcidInfo.Builder acidInfoBuilder = AcidInfo.builder(Location.of("file:///data/fullacid"));
         acidInfoBuilder.addDeleteDelta(Location.of("file:///data/fullacid/delete_delta_0000004_0000004_0000"));

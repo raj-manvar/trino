@@ -411,7 +411,7 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public List<String> getTableNamesWithParameters(String databaseName, String parameterKey, ImmutableSet<String> parameterValues)
+    public List<String> getTableNamesWithParameters(String databaseName, String parameterKey, Set<String> parameterValues)
     {
         return getTablesInternal(
                 _ -> {},
@@ -424,7 +424,7 @@ public class GlueHiveMetastore
     private List<TableInfo> getTablesInternal(Consumer<Table> cacheTable, String databaseName, Predicate<software.amazon.awssdk.services.glue.model.Table> filter)
     {
         try {
-            ImmutableList<software.amazon.awssdk.services.glue.model.Table> glueTables = stats.getGetTables()
+            List<software.amazon.awssdk.services.glue.model.Table> glueTables = stats.getGetTables()
                     .call(() -> glueClient.getTablesPaginator(builder -> builder
                                     .databaseName(databaseName)).stream()
                             .map(GetTablesResponse::tableList)
@@ -447,6 +447,10 @@ public class GlueHiveMetastore
         }
         catch (EntityNotFoundException _) {
             // Database might have been deleted concurrently.
+            return ImmutableList.of();
+        }
+        catch (AccessDeniedException _) {
+            // permission denied may actually mean "does not exist"
             return ImmutableList.of();
         }
         catch (SdkException e) {
@@ -1106,6 +1110,7 @@ public class GlueHiveMetastore
 
         // statistics are created after partitions because it is not clear if ordering matters in Glue
         var createStatisticsTasks = partitionsWithStatistics.stream()
+                .filter(partitionWithStatistics -> partitionWithStatistics.getStatistics() != PartitionStatistics.empty())
                 .map(partitionWithStatistics -> createUpdatePartitionStatisticsTasks(
                         StatisticsUpdateMode.OVERWRITE_ALL,
                         partitionWithStatistics.getPartition(),

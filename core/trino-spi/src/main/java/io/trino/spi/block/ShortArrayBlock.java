@@ -16,7 +16,6 @@ package io.trino.spi.block;
 import jakarta.annotation.Nullable;
 
 import java.util.Optional;
-import java.util.OptionalInt;
 import java.util.function.ObjLongConsumer;
 
 import static io.airlift.slice.SizeOf.instanceSize;
@@ -25,6 +24,7 @@ import static io.trino.spi.block.BlockUtil.checkArrayRange;
 import static io.trino.spi.block.BlockUtil.checkReadablePosition;
 import static io.trino.spi.block.BlockUtil.checkValidRegion;
 import static io.trino.spi.block.BlockUtil.compactArray;
+import static io.trino.spi.block.BlockUtil.compactIsNull;
 import static io.trino.spi.block.BlockUtil.copyIsNullAndAppendNull;
 import static io.trino.spi.block.BlockUtil.ensureCapacity;
 
@@ -72,12 +72,6 @@ public final class ShortArrayBlock
     }
 
     @Override
-    public OptionalInt fixedSizeInBytesPerPosition()
-    {
-        return OptionalInt.of(SIZE_IN_BYTES_PER_POSITION);
-    }
-
-    @Override
     public long getSizeInBytes()
     {
         return SIZE_IN_BYTES_PER_POSITION * (long) positionCount;
@@ -87,12 +81,6 @@ public final class ShortArrayBlock
     public long getRegionSizeInBytes(int position, int length)
     {
         return SIZE_IN_BYTES_PER_POSITION * (long) length;
-    }
-
-    @Override
-    public long getPositionsSizeInBytes(boolean[] positions, int selectedPositionsCount)
-    {
-        return (long) SIZE_IN_BYTES_PER_POSITION * selectedPositionsCount;
     }
 
     @Override
@@ -152,8 +140,11 @@ public final class ShortArrayBlock
     @Override
     public boolean isNull(int position)
     {
+        if (!mayHaveNull()) {
+            return false;
+        }
         checkReadablePosition(this, position);
-        return valueIsNull != null && valueIsNull[position + arrayOffset];
+        return valueIsNull[position + arrayOffset];
     }
 
     @Override
@@ -172,6 +163,7 @@ public final class ShortArrayBlock
     {
         checkArrayRange(positions, offset, length);
 
+        boolean hasNull = false;
         boolean[] newValueIsNull = null;
         if (valueIsNull != null) {
             newValueIsNull = new boolean[length];
@@ -181,11 +173,13 @@ public final class ShortArrayBlock
             int position = positions[offset + i];
             checkReadablePosition(this, position);
             if (valueIsNull != null) {
-                newValueIsNull[i] = valueIsNull[position + arrayOffset];
+                boolean isNull = valueIsNull[position + arrayOffset];
+                newValueIsNull[i] = isNull;
+                hasNull |= isNull;
             }
             newValues[i] = values[position + arrayOffset];
         }
-        return new ShortArrayBlock(0, length, newValueIsNull, newValues);
+        return new ShortArrayBlock(0, length, hasNull ? newValueIsNull : null, newValues);
     }
 
     @Override
@@ -202,7 +196,7 @@ public final class ShortArrayBlock
         checkValidRegion(getPositionCount(), positionOffset, length);
 
         positionOffset += arrayOffset;
-        boolean[] newValueIsNull = valueIsNull == null ? null : compactArray(valueIsNull, positionOffset, length);
+        boolean[] newValueIsNull = compactIsNull(valueIsNull, positionOffset, length);
         short[] newValues = compactArray(values, positionOffset, length);
 
         if (newValueIsNull == valueIsNull && newValues == values) {

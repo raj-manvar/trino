@@ -16,7 +16,7 @@ package io.trino.execution;
 import com.google.common.collect.ImmutableList;
 import io.trino.spi.Page;
 import io.trino.spi.block.Block;
-import io.trino.spi.block.ByteArrayBlock;
+import io.trino.spi.block.LongArrayBlock;
 import io.trino.spi.connector.ColumnHandle;
 import io.trino.spi.connector.ConnectorPageSource;
 import io.trino.spi.connector.ConnectorPageSourceProvider;
@@ -59,8 +59,8 @@ public class TestingPageSourceProvider
     {
         requireNonNull(columns, "columns is null");
 
-        ImmutableList<Block> blocks = columns.stream()
-                .map(column -> new ByteArrayBlock(1, Optional.of(new boolean[] {true}), new byte[1]))
+        List<Block> blocks = columns.stream()
+                .map(column -> new LongArrayBlock(1, Optional.of(new boolean[] {true}), new long[1]))
                 .collect(toImmutableList());
 
         return new FixedPageSource(ImmutableList.of(new Page(blocks.toArray(new Block[blocks.size()]))));

@@ -22,7 +22,6 @@ import io.airlift.json.ObjectMapperProvider;
 import io.trino.spi.expression.FunctionName;
 import io.trino.spi.statistics.ColumnStatisticMetadata;
 import io.trino.spi.statistics.ColumnStatisticType;
-import io.trino.spi.type.TestingTypeManager;
 import io.trino.spi.type.Type;
 import io.trino.spi.type.TypeSignature;
 import io.trino.sql.planner.Symbol;
@@ -32,24 +31,27 @@ import io.trino.type.TypeDeserializer;
 import io.trino.type.TypeSignatureKeyDeserializer;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static io.trino.spi.statistics.TableStatisticType.ROW_COUNT;
 import static io.trino.spi.type.BigintType.BIGINT;
+import static io.trino.type.InternalTypeManager.TESTING_TYPE_MANAGER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TestStatisticAggregationsDescriptor
 {
-    private static final ImmutableList<String> COLUMNS = ImmutableList.of("", "col1", "$:###:;", "abc+dddd___");
+    private static final List<String> COLUMNS = ImmutableList.of("", "col1", "$:###:;", "abc+dddd___");
 
     @Test
     public void testSerializationRoundTrip()
     {
         ObjectMapperProvider provider = new ObjectMapperProvider();
         provider.setKeyDeserializers(ImmutableMap.of(
-                Symbol.class, new SymbolKeyDeserializer(new TestingTypeManager()),
+                Symbol.class, new SymbolKeyDeserializer(TESTING_TYPE_MANAGER),
                 TypeSignature.class, new TypeSignatureKeyDeserializer()));
 
         provider.setJsonDeserializers(ImmutableMap.of(
-                Type.class, new TypeDeserializer(new TestingTypeManager()::getType)));
+                Type.class, new TypeDeserializer(TESTING_TYPE_MANAGER::getType)));
 
         JsonCodec<StatisticAggregationsDescriptor<Symbol>> codec = new JsonCodecFactory(provider).jsonCodec(new TypeToken<>() {});
         assertSerializationRoundTrip(codec, StatisticAggregationsDescriptor.<Symbol>builder().build());

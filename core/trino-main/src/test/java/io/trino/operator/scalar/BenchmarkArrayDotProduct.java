@@ -92,7 +92,7 @@ public class BenchmarkArrayDotProduct
             Type elementType = DOUBLE;
             TestingFunctionResolution functionResolution = new TestingFunctionResolution();
             ArrayType arrayType = new ArrayType(elementType);
-            ImmutableList<RowExpression> projections = ImmutableList.of(new CallExpression(
+            List<RowExpression> projections = ImmutableList.of(new CallExpression(
                     functionResolution.resolveFunction(name, fromTypes(arrayType, arrayType)),
                     ImmutableList.of(field(0, arrayType), field(1, arrayType))));
 
@@ -140,7 +140,7 @@ public class BenchmarkArrayDotProduct
         new BenchmarkArrayDotProduct().arrayIntersect(data);
     }
 
-    public static void main(String[] args)
+    static void main()
             throws Exception
     {
         // assure the benchmarks are valid before running

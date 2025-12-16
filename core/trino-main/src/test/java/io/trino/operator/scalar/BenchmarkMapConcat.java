@@ -137,7 +137,7 @@ public class BenchmarkMapConcat
                     functionResolution.resolveFunction(name, fromTypes(mapType, mapType)),
                     ImmutableList.of(field(0, mapType), field(1, mapType))));
 
-            ImmutableList<RowExpression> projections = projectionsBuilder.build();
+            List<RowExpression> projections = projectionsBuilder.build();
             pageProcessor = compiler.compilePageProcessor(Optional.empty(), projections).get();
             page = new Page(leftBlock, rightBlock);
         }
@@ -192,7 +192,7 @@ public class BenchmarkMapConcat
         }
     }
 
-    public static void main(String[] args)
+    static void main()
             throws Exception
     {
         // assure the benchmarks are valid before running

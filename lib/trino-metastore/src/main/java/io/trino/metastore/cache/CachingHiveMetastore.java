@@ -47,6 +47,7 @@ import io.trino.metastore.TableInfo;
 import io.trino.spi.TrinoException;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.function.LanguageFunction;
+import io.trino.spi.metrics.Metrics;
 import io.trino.spi.predicate.TupleDomain;
 import io.trino.spi.security.RoleGrant;
 import org.weakref.jmx.Managed;
@@ -479,7 +480,7 @@ public final class CachingHiveMetastore
         return delegate.useSparkTableStatistics();
     }
 
-    private static ImmutableMap<String, HiveColumnStatistics> removeEmptyColumnStatistics(Set<String> columnNames, Map<String, HiveColumnStatistics> columnStatistics)
+    private static Map<String, HiveColumnStatistics> removeEmptyColumnStatistics(Set<String> columnNames, Map<String, HiveColumnStatistics> columnStatistics)
     {
         return columnStatistics.entrySet().stream()
                 .filter(entry -> columnNames.contains(entry.getKey()) && !entry.getValue().equals(HiveColumnStatistics.empty()))
@@ -566,7 +567,7 @@ public final class CachingHiveMetastore
     }
 
     @Override
-    public List<String> getTableNamesWithParameters(String databaseName, String parameterKey, ImmutableSet<String> parameterValues)
+    public List<String> getTableNamesWithParameters(String databaseName, String parameterKey, Set<String> parameterValues)
     {
         TablesWithParameterCacheKey key = new TablesWithParameterCacheKey(databaseName, parameterKey, parameterValues);
         return get(tableNamesWithParametersCache, key);
@@ -1120,6 +1121,12 @@ public final class CachingHiveMetastore
         delegate.dropFunction(databaseName, functionName, signatureToken);
     }
 
+    @Override
+    public Metrics getMetrics()
+    {
+        return delegate.getMetrics();
+    }
+
     private static <K, V> LoadingCache<K, V> buildCache(
             OptionalLong expiresAfterWriteMillis,
             OptionalLong refreshMillis,
@@ -1166,7 +1173,7 @@ public final class CachingHiveMetastore
         return cacheBuilder.build();
     }
 
-    record TablesWithParameterCacheKey(String databaseName, String parameterKey, ImmutableSet<String> parameterValues)
+    record TablesWithParameterCacheKey(String databaseName, String parameterKey, Set<String> parameterValues)
     {
         TablesWithParameterCacheKey
         {

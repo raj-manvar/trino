@@ -20,6 +20,8 @@ import io.airlift.units.DataSize.Unit;
 import io.airlift.units.Duration;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
@@ -98,6 +100,7 @@ public class TestHiveConfig
                 .setFileStatusCacheExpireAfterWrite(new Duration(1, TimeUnit.MINUTES))
                 .setFileStatusCacheMaxRetainedSize(DataSize.of(1, GIGABYTE))
                 .setFileStatusCacheTables(ImmutableList.of())
+                .setFileStatusCacheExcludedTables(ImmutableList.of())
                 .setPerTransactionFileStatusCacheMaxRetainedSize(DataSize.of(100, MEGABYTE))
                 .setTranslateHiveViews(false)
                 .setLegacyHiveViewTranslation(false)
@@ -118,11 +121,15 @@ public class TestHiveConfig
                 .setAutoPurge(false)
                 .setPartitionProjectionEnabled(true)
                 .setS3GlacierFilter(S3GlacierFilter.READ_ALL)
-                .setMetadataParallelism(8));
+                .setMetadataParallelism(8)
+                .setProtobufDescriptorsLocation(null)
+                .setProtobufDescriptorsCacheRefreshInterval(new Duration(1, TimeUnit.DAYS))
+                .setProtobufDescriptorsCacheMaxSize(64));
     }
 
     @Test
     public void testExplicitPropertyMappings()
+            throws IOException
     {
         Map<String, String> properties = ImmutableMap.<String, String>builder()
                 .put("hive.single-statement-writes", "true")
@@ -182,6 +189,7 @@ public class TestHiveConfig
                 .put("hive.temporary-staging-directory-path", "updated")
                 .put("hive.delegate-transactional-managed-table-location-to-metastore", "true")
                 .put("hive.file-status-cache-tables", "foo.bar1, foo.bar2")
+                .put("hive.file-status-cache.excluded-tables", "bar.baz1")
                 .put("hive.file-status-cache.max-retained-size", "1000B")
                 .put("hive.file-status-cache-expire-time", "30m")
                 .put("hive.per-transaction-file-status-cache.max-retained-size", "42B")
@@ -205,6 +213,9 @@ public class TestHiveConfig
                 .put("hive.partition-projection-enabled", "false")
                 .put("hive.s3-glacier-filter", "READ_NON_GLACIER_AND_RESTORED")
                 .put("hive.metadata.parallelism", "10")
+                .put("hive.protobuf.descriptors.location", "/tmp")
+                .put("hive.protobuf.descriptors.cache.max-size", "8")
+                .put("hive.protobuf.descriptors.cache.refresh-interval", "10s")
                 .buildOrThrow();
 
         HiveConfig expected = new HiveConfig()
@@ -265,6 +276,7 @@ public class TestHiveConfig
                 .setTemporaryStagingDirectoryPath("updated")
                 .setDelegateTransactionalManagedTableLocationToMetastore(true)
                 .setFileStatusCacheTables(ImmutableList.of("foo.bar1", "foo.bar2"))
+                .setFileStatusCacheExcludedTables(ImmutableList.of("bar.baz1"))
                 .setFileStatusCacheMaxRetainedSize(DataSize.ofBytes(1000))
                 .setFileStatusCacheExpireAfterWrite(new Duration(30, TimeUnit.MINUTES))
                 .setPerTransactionFileStatusCacheMaxRetainedSize(DataSize.ofBytes(42))
@@ -287,7 +299,10 @@ public class TestHiveConfig
                 .setAutoPurge(true)
                 .setPartitionProjectionEnabled(false)
                 .setS3GlacierFilter(S3GlacierFilter.READ_NON_GLACIER_AND_RESTORED)
-                .setMetadataParallelism(10);
+                .setMetadataParallelism(10)
+                .setProtobufDescriptorsLocation(Path.of("/tmp"))
+                .setProtobufDescriptorsCacheMaxSize(8)
+                .setProtobufDescriptorsCacheRefreshInterval(new Duration(10, TimeUnit.SECONDS));
 
         assertFullMapping(properties, expected);
     }

@@ -184,7 +184,7 @@ The following table lists the configuration properties for the Ranger access con
 ## Required policies
 
 * Users must have permission to execute queries in Trino. Without a policy in
-  Apache Ranger to grant this permission, users are not be able to execute any
+  Apache Ranger to grant this permission, users are not able to execute any
   query.
   * To allow this, create a policy in Apache Ranger for a `queryId` resource
     with a value `*` and with the `execute` permission for the user `{USER}`.
@@ -193,3 +193,7 @@ The following table lists the configuration properties for the Ranger access con
   execute any query.
   * To allow this, create a policy in Apache Ranger for a `trinouser` resource
     with value `{USER}` and with the `impersonate` permission for user `{USER}`.
+* External clients can use the `system.runtime.kill_query()` procedure to 
+  kill running queries. Add a policy with Schema `system`, Database
+  `runtime` and Procedure `kill_query` with `execute` permission for user
+  `{USER}`.

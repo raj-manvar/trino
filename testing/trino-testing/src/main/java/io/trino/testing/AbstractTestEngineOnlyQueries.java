@@ -46,6 +46,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -59,6 +60,7 @@ import static io.trino.SystemSessionProperties.IGNORE_DOWNSTREAM_PREFERENCES;
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
 import static io.trino.spi.type.VarcharType.VARCHAR;
+import static io.trino.sql.analyzer.QueryExplainer.DEPRECATED_TYPE_LOGICAL_WARNING;
 import static io.trino.sql.tree.ExplainType.Type.DISTRIBUTED;
 import static io.trino.sql.tree.ExplainType.Type.IO;
 import static io.trino.sql.tree.ExplainType.Type.LOGICAL;
@@ -1300,7 +1302,6 @@ public abstract class AbstractTestEngineOnlyQueries
         assertEqualsIgnoreOrder(actual, expected);
 
         session = Session.builder(getSession())
-                .setSystemProperty("omit_datetime_type_precision", "false")
                 .addPreparedStatement(
                         "my_query",
                         "SELECT 1 " +
@@ -1316,20 +1317,6 @@ public abstract class AbstractTestEngineOnlyQueries
                 .row(0, "char(2)")
                 .row(1, "varchar")
                 .row(2, "timestamp(3)")
-                .row(3, "timestamp(6)")
-                .row(4, "decimal(3,2)")
-                .build();
-        assertEqualsIgnoreOrder(actual, expected);
-
-        session = Session.builder(session)
-                .setSystemProperty("omit_datetime_type_precision", "true")
-                .build();
-
-        actual = computeActual(session, "DESCRIBE INPUT my_query");
-        expected = resultBuilder(session, BIGINT, VARCHAR)
-                .row(0, "char(2)")
-                .row(1, "varchar")
-                .row(2, "timestamp")
                 .row(3, "timestamp(6)")
                 .row(4, "decimal(3,2)")
                 .build();
@@ -1414,27 +1401,14 @@ public abstract class AbstractTestEngineOnlyQueries
     public void testDescribeOutputDateTimeTypes()
     {
         Session session = Session.builder(getSession())
-                .setSystemProperty("omit_datetime_type_precision", "true")
                 .addPreparedStatement("my_query", "SELECT localtimestamp a, current_timestamp b, localtime c")
                 .build();
 
         MaterializedResult actual = computeActual(session, "DESCRIBE OUTPUT my_query");
         MaterializedResult expected = resultBuilder(session, VARCHAR, VARCHAR, VARCHAR, VARCHAR, VARCHAR, BIGINT, BOOLEAN)
-                .row("a", "", "", "", "timestamp", 8, true)
-                .row("b", "", "", "", "timestamp with time zone", 8, true)
-                .row("c", "", "", "", "time", 8, true)
-                .build();
-        assertEqualsIgnoreOrder(actual, expected);
-
-        session = Session.builder(getSession())
-                .setSystemProperty("omit_datetime_type_precision", "false")
-                .addPreparedStatement("my_query", "SELECT localtimestamp a, current_timestamp b")
-                .build();
-
-        actual = computeActual(session, "DESCRIBE OUTPUT my_query");
-        expected = resultBuilder(session, VARCHAR, VARCHAR, VARCHAR, VARCHAR, VARCHAR, BIGINT, BOOLEAN)
                 .row("a", "", "", "", "timestamp(3)", 8, true)
                 .row("b", "", "", "", "timestamp(3) with time zone", 8, true)
+                .row("c", "", "", "", "time(3)", 8, true)
                 .build();
         assertEqualsIgnoreOrder(actual, expected);
     }
@@ -5366,7 +5340,7 @@ public abstract class AbstractTestEngineOnlyQueries
                 getSession().getQueryDataEncoding());
         MaterializedResult result = computeActual(session, "SHOW SESSION");
 
-        ImmutableMap<String, MaterializedRow> properties = Maps.uniqueIndex(result.getMaterializedRows(), input -> {
+        Map<String, MaterializedRow> properties = Maps.uniqueIndex(result.getMaterializedRows(), input -> {
             assertThat(input.getFieldCount()).isEqualTo(5);
             return (String) input.getField(0);
         });
@@ -5971,6 +5945,14 @@ public abstract class AbstractTestEngineOnlyQueries
     }
 
     @Test
+    public void testDefaultExplainJsonFormat()
+    {
+        String query = "SELECT * FROM orders";
+        MaterializedResult result = computeActual("EXPLAIN (FORMAT JSON) " + query);
+        assertThat(getOnlyElement(result.getOnlyColumnAsSet())).isEqualTo(getJsonExplainPlan(query, DISTRIBUTED));
+    }
+
+    @Test
     public void testLogicalExplain()
     {
         String query = "SELECT * FROM orders";
@@ -6003,6 +5985,16 @@ public abstract class AbstractTestEngineOnlyQueries
         String query = "SELECT * FROM orders";
         MaterializedResult result = computeActual("EXPLAIN (TYPE LOGICAL, FORMAT TEXT) " + query);
         assertThat(getOnlyElement(result.getOnlyColumnAsSet())).isEqualTo(getExplainPlan(query, LOGICAL));
+        assertThat(getOnlyElement(result.getOnlyColumnAsSet())).isEqualTo(DEPRECATED_TYPE_LOGICAL_WARNING + getExplainPlan(query, DISTRIBUTED));
+    }
+
+    @Test
+    public void testLogicalExplainJsonFormat()
+    {
+        String query = "SELECT * FROM orders";
+        MaterializedResult result = computeActual("EXPLAIN (TYPE LOGICAL, FORMAT JSON) " + query);
+        assertThat(getOnlyElement(result.getOnlyColumnAsSet())).isEqualTo(getJsonExplainPlan(query, LOGICAL));
+        assertThat(getOnlyElement(result.getOnlyColumnAsSet())).isEqualTo(getJsonExplainPlan(query, DISTRIBUTED));
     }
 
     @Test
